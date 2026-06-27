@@ -1,0 +1,44 @@
+# Python
+backend/.venv/
+backend/data/
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Models (large; download with scripts/download_models.py)
+backend/models/*.onnx
+backend/models/*.bin
+
+# Node
+frontend/node_modules/
+frontend/dist/
+frontend/test-results/
+frontend/playwright-report/
+frontend/e2e/
+
+# TypeScript build artifacts
+frontend/tsconfig*.tsbuildinfo
+frontend/vite.config.d.ts
+frontend/vite.config.js
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Project explanation
+project-explanation.html
+
+# Misc
+backend/scripts/_speak_sample.wav
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
