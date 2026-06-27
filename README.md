@@ -1,98 +1,179 @@
 # 🗣️ Second Voice
 
-An accessible, free, tap-to-speak **AAC** (augmentative & alternative communication) web app for non-verbal and autistic users. Tap picture tiles to build a sentence, let **Gemini** turn the tiles into a natural first-person sentence, and hear it spoken aloud with an on-device **kokoro-onnx** voice. A phrase bank learns what's used most and floats it to the top.
+**A free, accessible AI-powered communication app for non-verbal and autistic users.**
 
-Built for the **Youth Code x AI** hackathon — Track 03 (*AI That Actually Helps People*). No GPU required. Everything runs on free tiers.
+Tap picture tiles to build a message. Gemini AI turns those tiles into a natural sentence. An on-device neural voice speaks it aloud — all for free, no GPU required, installable on any tablet.
 
-| Light | Dark / high-contrast |
-|---|---|
-| ![light](frontend/e2e/shots/board-light.png) | ![dark](frontend/e2e/shots/board-dark.png) |
 
-## Features
+---
 
-- **Picture + text tile board** across 7 categories (Quick, Needs, Feelings, People, Food, Places, Actions).
-- **Tap to speak** — quick replies ("Yes", "I need help") speak instantly; other tiles build a sentence.
-- **Gemini composition** — turns tapped keyword tiles into one natural sentence (with a plain-join fallback if offline/over quota).
-- **Natural voice on CPU** — kokoro-onnx (the same engine Voicebox bundles), 10 selectable voices, adjustable speed. No GPU, no API key.
-- **Phrase bank** — SQLite tracks usage so the most-used tiles surface first.
-- **Accessibility** — high-contrast theme, adjustable text size, **scanning mode** for single-switch access, large tap targets, ARIA labels.
-- **PWA** — installable full-screen on a phone or tablet (the real AAC form factor).
+| Light Mode | Dark / High-Contrast Mode |
+|:---:|:---:|
+| ![Light mode](docs/board-light.png) | ![Dark mode](docs/board-dark.png) |
 
-## Architecture
+---
 
+## What is Second Voice?
+
+Second Voice is an AAC (Augmentative and Alternative Communication) web app. AAC tools help people who cannot speak — whether due to autism, ALS, cerebral palsy, stroke, or other conditions — communicate by selecting symbols, words, or phrases that are then spoken aloud.
+
+Commercial AAC devices cost $3,000–$15,000. Most apps require paid subscriptions. Second Voice does it for **$0** using AI.
+
+### How it works
+
+1. **Tap tiles** — 70 picture+text tiles across 7 categories (Quick, Needs, Feelings, People, Food, Places, Actions)
+2. **AI composes** — Gemini 2.5 Flash turns your tapped keywords into a natural first-person sentence
+3. **Speaks aloud** — kokoro-onnx synthesizes natural speech on CPU in under 1 second
+4. **Learns** — tiles you use most automatically float to the top
+
+Quick replies like "Yes", "No", and "I need help" speak with a single tap.
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Frontend | React, TypeScript, Vite, Tailwind CSS, Zustand, PWA |
+| Backend | Python, FastAPI, SQLite |
+| AI Composition | Google Gemini 2.5 Flash (free tier) |
+| Text-to-Speech | kokoro-onnx (82M parameter neural TTS, CPU) |
+| Testing | Playwright (E2E), custom smoke tests |
+| Deployment | Docker, Nginx, DigitalOcean |
+
+---
+
+## Accessibility Features
+
+- **Large tap targets** (min 96px) with symbol + text on every tile
+- **High-contrast dark mode** toggle
+- **Adjustable text size** (80%–200%)
+- **Scanning mode** — auto-highlights tiles in sequence; single-switch/Space selects (for motor-impaired users)
+- **ARIA labels** and visible focus indicators throughout
+- **PWA** — installs full-screen on a tablet like a dedicated device
+
+---
+
+## Setup
+
+### Prerequisites
+
+- Python 3.12+
+- Node.js 22+
+- A free [Google Gemini API key](https://aistudio.google.com/apikey)
+
+### 1. Clone and set up environment variables
+
+```bash
+git clone <your-repo-url>
+cd second-voice
 ```
-frontend (React + Vite + TS + Tailwind, PWA)
-   |  /api  (vite proxy in dev, nginx proxy in prod)
-   v
-backend (FastAPI)
-   ├─ /api/board, /api/tiles/{id}/use   -> SQLite phrase bank
-   ├─ /api/compose                       -> Gemini (free tier) + fallback
-   └─ /api/speak                         -> kokoro-onnx TTS (CPU) -> WAV
+
+Create a `.env` file in the project root:
+
+```env
+GEMINI_API_KEY=your-gemini-api-key-here
+HUGGINGFACE_TOKEN=your-hf-token-here
 ```
 
-## Local development
+> **Without `GEMINI_API_KEY`** the app still works — it joins tiles into a sentence without AI composition.  
+> **`HUGGINGFACE_TOKEN`** is reserved for future voice-cloning features; not required for the MVP.
 
-**Prerequisites:** Python 3.12+ and Node.js 22+.
-
-### 1. Backend
+### 2. Backend setup
 
 ```bash
 cd backend
 python -m venv .venv
-.venv\Scripts\activate            # Windows  (use: source .venv/bin/activate on macOS/Linux)
+
+# Windows:
+.\.venv\Scripts\activate
+# macOS/Linux:
+# source .venv/bin/activate
+
 pip install -r requirements.txt
-python scripts/download_models.py  # downloads kokoro model (~350 MB) into backend/models/
-uvicorn app.main:app --reload --port 8000
 ```
 
-Create a `.env` (in the repo root or `backend/`) with:
+### 3. Download the TTS model
 
+The Kokoro voice model (~350 MB total) needs to be downloaded once:
+
+```bash
+python scripts/download_models.py
 ```
-GEMINI_API_KEY=your-gemini-api-key
-HUGGINGFACE_TOKEN=your-hf-token   # reserved for future cloning/OCR features
+
+This downloads two files into `backend/models/`:
+- `kokoro-v1.0.onnx` (325 MB) — the neural TTS model
+- `voices-v1.0.bin` (28 MB) — voice pack with 10 natural voices
+
+### 4. Start the backend
+
+```bash
+uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-> Without `GEMINI_API_KEY` the app still works — it just joins the tiles into a sentence instead of using Gemini.
+You should see:
+```
+INFO: Loading Kokoro model...
+INFO: Kokoro model loaded
+INFO: Second Voice backend ready
+INFO: Uvicorn running on http://127.0.0.1:8000
+```
 
-### 2. Frontend
+### 5. Frontend setup
+
+Open a new terminal:
 
 ```bash
 cd frontend
 npm install
-npm run dev        # http://localhost:5173  (proxies /api -> localhost:8000)
+npm run dev
 ```
 
-## Testing
+### 6. Open the app
 
-- **Backend smoke test** (server must be running): `python backend/scripts/smoke_test.py`
-- **Frontend E2E** (Playwright, dev server + backend must be running):
-  ```bash
-  cd frontend
-  # PLAYWRIGHT_BROWSERS_PATH=0 keeps the browser inside node_modules (stable across runs)
-  $env:PLAYWRIGHT_BROWSERS_PATH="0"; npx playwright install chromium   # first time only
-  $env:PLAYWRIGHT_BROWSERS_PATH="0"; npx playwright test
-  ```
-  On macOS/Linux use `PLAYWRIGHT_BROWSERS_PATH=0 npx playwright test`.
+Go to **http://localhost:5173** — the app is ready to use.
 
-## Deployment (DigitalOcean)
 
-The app is fully containerized. On a droplet with Docker + Compose:
+## Project Structure
 
-```bash
-git clone <your-repo> && cd second-voice
-cd backend && python scripts/download_models.py && cd ..   # fetch models into backend/models/
-cp .env.example .env   # then fill in GEMINI_API_KEY
-docker compose up -d --build
+```
+second-voice/
+├── backend/
+│   ├── app/
+│   │   ├── main.py          # FastAPI app + startup
+│   │   ├── config.py        # Environment config
+│   │   ├── db.py            # SQLite connection + schema
+│   │   ├── tts.py           # kokoro-onnx TTS wrapper
+│   │   ├── gemini.py        # Gemini composition + fallback
+│   │   ├── seed.py          # Default tile data
+│   │   ├── schemas.py       # Pydantic models
+│   │   └── routers/         # board, compose, speak endpoints
+│   ├── models/              # .onnx + .bin (gitignored, download via script)
+│   ├── scripts/
+│   │   ├── download_models.py
+│   │   └── smoke_test.py
+│   ├── requirements.txt
+│   └── Dockerfile
+├── frontend/
+│   ├── src/
+│   │   ├── App.tsx          # Main app with board + interactions
+│   │   ├── api.ts           # Typed API client
+│   │   ├── store.ts         # Zustand state (sentence, settings)
+│   │   └── components/      # Tile, CategoryTabs, SentenceBar, SettingsPanel
+│   ├── public/icon.svg
+│   ├── e2e/                 # Playwright E2E tests
+│   ├── Dockerfile
+│   └── nginx.conf
+├── docs/
+│   ├── board-light.png
+│   └── board-dark.png
+├── docker-compose.yml
+├── .env.example
+└── README.md
 ```
 
-`web` (nginx) serves the built frontend on port 80 and proxies `/api` to the `backend` service, so there are no cross-origin issues. Use a 2 GB+ droplet so the ONNX runtime has headroom. Add HTTPS with Caddy or Certbot in front for a public URL.
+---
 
-## Tech & credits
+## License
 
-- **kokoro-onnx** — CPU text-to-speech (Kokoro 82M), the engine also bundled by Voicebox.
-- **Google Gemini** (free tier) — sentence composition.
-- FastAPI · React · Vite · Tailwind · SQLite · Playwright.
-
-## Roadmap (Phase 2)
-
-Personal voice cloning (free HF Space), "read-the-world" OCR via Unlimited-OCR, speech-to-text, caregiver accounts + board editor, multilingual support, and offline mode. See the full plan in `.cursor/plans/`.
+MIT
